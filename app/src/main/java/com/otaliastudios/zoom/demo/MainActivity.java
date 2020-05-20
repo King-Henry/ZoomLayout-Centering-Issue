@@ -1,6 +1,8 @@
 package com.otaliastudios.zoom.demo;
 
 import android.annotation.TargetApi;
+import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
@@ -17,6 +19,7 @@ import com.google.android.exoplayer2.upstream.DataSource;
 import com.google.android.exoplayer2.upstream.DefaultDataSourceFactory;
 import com.google.android.exoplayer2.util.Util;
 import com.google.android.exoplayer2.video.VideoListener;
+import com.otaliastudios.zoom.Alignment;
 import com.otaliastudios.zoom.ZoomImageView;
 import com.otaliastudios.zoom.ZoomLayout;
 import com.otaliastudios.zoom.ZoomLogger;
@@ -24,13 +27,19 @@ import com.otaliastudios.zoom.ZoomSurfaceView;
 
 import org.jetbrains.annotations.NotNull;
 
+import java.util.ArrayList;
+
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.content.ContextCompat;
+import androidx.core.graphics.drawable.DrawableCompat;
 
 
-public class MainActivity extends AppCompatActivity {
+public class MainActivity extends AppCompatActivity implements View.OnClickListener{
 
-    private SimpleExoPlayer player;
+    ArrayList<Integer> drawableList;
+    int currentDrawableIndex;
+
+    ZoomImageView zoomImage;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -38,111 +47,88 @@ public class MainActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
-        final boolean supportsSurfaceView = Build.VERSION.SDK_INT >= Build.VERSION_CODES.JELLY_BEAN_MR2;
-        if (supportsSurfaceView) setUpVideoPlayer();
+        zoomImage = findViewById(R.id.zoom_image);
+        final Button button = findViewById(R.id.button);
+        button.setOnClickListener(this);
 
-        final Button buttonZoomLayout = findViewById(R.id.show_zl);
-        final Button buttonZoomImage = findViewById(R.id.show_ziv);
-        final Button buttonZoomSurface = findViewById(R.id.show_zsv);
-        final ZoomLayout zoomLayout = findViewById(R.id.zoom_layout);
-        final ZoomImageView zoomImage = findViewById(R.id.zoom_image);
-        final View zoomSurface = findViewById(R.id.zoom_surface);
-        zoomImage.setImageDrawable(new ColorGridDrawable());
+        final Button centerButton = findViewById(R.id.centerPanButton);
+        centerButton.setOnClickListener(centerImage);
 
-        buttonZoomLayout.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View view) {
-                if (supportsSurfaceView) player.setPlayWhenReady(false);
-                zoomSurface.setVisibility(View.GONE);
-                zoomImage.setVisibility(View.GONE);
-                zoomLayout.setVisibility(View.VISIBLE);
-                buttonZoomImage.setAlpha(0.65f);
-                buttonZoomSurface.setAlpha(0.65f);
-                buttonZoomLayout.setAlpha(1f);
-            }
-        });
-
-        buttonZoomImage.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View view) {
-                if (supportsSurfaceView) player.setPlayWhenReady(false);
-                zoomSurface.setVisibility(View.GONE);
-                zoomLayout.setVisibility(View.GONE);
-                zoomImage.setVisibility(View.VISIBLE);
-                buttonZoomLayout.setAlpha(0.65f);
-                buttonZoomSurface.setAlpha(0.65f);
-                buttonZoomImage.setAlpha(1f);
-            }
-        });
-        buttonZoomSurface.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                if (supportsSurfaceView) {
-                    player.setPlayWhenReady(true);
-                    zoomImage.setVisibility(View.GONE);
-                    zoomLayout.setVisibility(View.GONE);
-                    zoomSurface.setVisibility(View.VISIBLE);
-                    buttonZoomLayout.setAlpha(0.65f);
-                    buttonZoomImage.setAlpha(0.65f);
-                    buttonZoomSurface.setAlpha(1f);
-                } else {
-                    Toast.makeText(MainActivity.this,
-                            "ZoomSurfaceView requires API 18", Toast.LENGTH_SHORT).show();
-                }
-            }
-        });
-        buttonZoomLayout.performClick();
+        createDrawableList();
+        currentDrawableIndex = 0;
     }
 
     @Override
-    protected void onStop() {
-        super.onStop();
-        ZoomSurfaceView surface = findViewById(R.id.surface_view);
-        surface.onPause();
+    public void onClick(View view) {
+        zoomImage.getEngine().clear();
+        zoomImage.setVisibility(View.VISIBLE);
+        Bitmap bitmap = BitmapFactory.decodeResource(getResources(),
+                drawableList.get(currentDrawableIndex));
+
+        int x = bitmap.getWidth();
+        int y = bitmap.getHeight();
+
+        bitmap.getWidth();
+
+        zoomImage.setImageBitmap(bitmap);
+        zoomImage.zoomTo(1, false);
+
+        if(currentDrawableIndex < drawableList.size() - 2){
+            currentDrawableIndex++;
+        } else{
+            currentDrawableIndex = 0;
+        }
     }
 
+    private void createDrawableList(){
+        drawableList = new ArrayList<>();
 
-    @Override
-    protected void onStart() {
-        super.onStart();
-        ZoomSurfaceView surface = findViewById(R.id.surface_view);
-        surface.onResume();
+        drawableList.add(R.drawable.test_crop_100_x_50);
+        drawableList.add(R.drawable.test_crop_100_x_100);
+        drawableList.add(R.drawable.test_crop_100_x_200);
+        drawableList.add(R.drawable.test_crop_1440_x_300);
+        drawableList.add(R.drawable.test_crop_1440_x_1440);
     }
 
-    @TargetApi(Build.VERSION_CODES.JELLY_BEAN_MR2)
-    private void setUpVideoPlayer() {
-        player = ExoPlayerFactory.newSimpleInstance(this);
-        PlayerControlView controls = findViewById(R.id.player_control_view);
-        final ZoomSurfaceView surface = findViewById(R.id.surface_view);
-        player.addVideoListener(new VideoListener() {
-            @Override
-            public void onVideoSizeChanged(int width, int height, int unappliedRotationDegrees, float pixelWidthHeightRatio) {
-                surface.setContentSize(width, height);
+    private View.OnClickListener centerImage = new View.OnClickListener() {
+        @Override
+        public void onClick(View v) {
+            float x  = zoomImage.getEngine().getContentWidth();
+            float y  = zoomImage.getEngine().getContentHeight();
+            float z  = zoomImage.getZoom();
+            float zr  = zoomImage.getRealZoom();
+            int lz = zoomImage.getLeft();
+            int rz = zoomImage.getRight();
+
+            zoomImage.getEngine().setAlignment(Alignment.RIGHT);
+
+
+            float xE = zoomImage.getEngine().getPanX();
+            float yE = zoomImage.getEngine().getPanY();
+
+            float xS = zoomImage.getPanX();
+            float yS = zoomImage.getPanX();
+
+
+            if(x > y){
+                x = x;
+                y = 0;
+            }else{
+                x = 0;
+                y = y;
             }
-        });
-        surface.setBackgroundColor(ContextCompat.getColor(this, R.color.background));
-        surface.addCallback(new ZoomSurfaceView.Callback() {
-            @Override
-            public void onZoomSurfaceCreated(@NotNull ZoomSurfaceView view) {
-                player.setVideoSurface(view.getSurface());
+
+            zoomImage.getEngine().panTo(-x/2, -y/2, false);
+
+            if(x > y){
+                x = -x/4;
+                y = 0;
+            }else{
+                x = 0;
+                y = -y/4;
             }
 
-            @Override
-            public void onZoomSurfaceDestroyed(@NotNull ZoomSurfaceView view) { }
-        });
-        controls.setPlayer(player);
-        controls.setShowTimeoutMs(0);
-        controls.show();
-        DataSource.Factory dataSourceFactory = new DefaultDataSourceFactory(this,
-                Util.getUserAgent(this, "ZoomLayoutLib"));
-        MediaSource videoSource = new ExtractorMediaSource.Factory(dataSourceFactory)
-                .createMediaSource(Uri.parse("https://clips.vorwaerts-gmbh.de/big_buck_bunny.mp4"));
-        player.prepare(videoSource);
-    }
-
-    @Override
-    protected void onDestroy() {
-        super.onDestroy();
-        player.release();
-    }
+            zoomImage.moveTo(1, x, y, false);
+        }
+    };
 }
